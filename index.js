@@ -27,11 +27,14 @@ wss.on('connection', function connection(ws) {
 	ws.on('message', function(message) {
 		message = JSON.parse(message) // обмен сообщениями происходит в строковом формате
 		message.clients = wss.clients.size;
+		// screen = message.screen
+
 		console.log(`message => `,message)
 
 
 		switch (message.event) {
 			case 'connection':
+				message.screen = screen
 				if (!usersArr.includes(message.id)) usersArr.push(message.id)
 				broadcastMessage(message)
 
@@ -53,7 +56,7 @@ wss.on('connection', function connection(ws) {
 
 
 			case 'settings':
-				screen = message.screen ? message.screen : 0
+				screen = message.screen ? message.screen : 'start'
 				broadcastMessage(message)
 				break;
 
@@ -123,7 +126,8 @@ wss.on('connection', function connection(ws) {
 
 
 						if(results) {
-							broadcastMessage(message)
+							if(!message.noBroadcast) broadcastMessage(message)
+							// if(message.admin == true) ws.send(JSON.stringify(message))
 							// message.admin == true ? ws.send(JSON.stringify(message)) :
 							// if (message.adminScreen != screen) {
 							// 	ws.send(JSON.stringify(message))
@@ -132,6 +136,44 @@ wss.on('connection', function connection(ws) {
 					})
 				// questionID
 					break;
+			case 'admincheckresult':
+				// mongoose.model
+				Answer
+					.aggregate([
+						{$match: {questionID: message.questionID},},
+						{$group:{_id: "$choiceID", count: {$sum: 1}}},
+						{$sort: {_id: 1}}
+						])
+					// .aggregate().group( {_id: "$choiceID", count: {$sum: 1}} ).sort({_id: 1})
+					.then(results => {
+						message.results = results
+						let count = 0;
+						results.forEach(res => {
+							count += res.count
+						})
+						 console.log(`message.results => `,message.results)
+
+
+						if(results) {
+							ws.send(JSON.stringify(message))
+							// message.admin == true ? ws.send(JSON.stringify(message)) :
+							// if (message.adminScreen != screen) {
+							// 	ws.send(JSON.stringify(message))
+							// }
+						}
+					})
+				// questionID
+					break;
+					case 'countvoted':
+						// mongoose.model
+						Answer.countDocuments({ admin: false, questionID: message.questionID })
+							.then(result => {
+								message.countvoted = result ? result : 0;
+								ws.send(JSON.stringify(message))
+							})
+
+						// questionID
+							break;
 
 		}
 
