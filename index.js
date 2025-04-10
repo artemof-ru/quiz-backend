@@ -21,12 +21,25 @@ const wss = new ws.Server({
 
 const usersArr = [];
 let screen = 'start';
+let clients = new Set();
 
 wss.on('connection', function connection(ws) {
+	clients.add(ws);
+	ws.on('close', () => {
+		userCount = clients.size;
+		clients.delete(ws);
+
+		let message = {
+			event: 'clientscount',
+			clients: clients.size,
+		}
+
+		broadcastMessage(message)
+	})
 
 	ws.on('message', function(message) {
 		message = JSON.parse(message) // обмен сообщениями происходит в строковом формате
-		message.clients = wss.clients.size;
+		message.clients = clients.size;
 		// screen = message.screen
 
 		console.log(`message => `,message)
@@ -190,7 +203,7 @@ wss.on('connection', function connection(ws) {
 
 // отправим сообщение всем подключенным на данный момент клиентам
 function broadcastMessage(message) {
-	console.log(`wss.clients.size => `,wss.clients.size)
+	// console.log(`wss.clients.size => `,wss.clients.size)
 
 	wss.clients.forEach( client => {
 		message.users = usersArr;
