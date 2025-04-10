@@ -187,13 +187,19 @@ wss.on('connection', function connection(ws) {
 
 						// questionID
 							break;
+			case 'clearquestion':
+				if(message.admin == true) {
+					Answer.deleteMany({questionID: message.questionID})
+						.then(e => {
+							broadcastMessage(message)
+						})
+				}
 
 		}
 
 	})
 
 })
-
 
 
 
